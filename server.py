@@ -45,6 +45,7 @@ from core.environment import (
 )
 
 PORT = 3000
+WEB_DEPLOY_MODE = bool(os.environ.get("VERCEL") or os.environ.get("COH_WEB_DEPLOY"))
 
 # Cached reference tables for human-readable search & autocompletion
 def build_reference_db():
@@ -408,10 +409,15 @@ class P5RWebHandler(SimpleHTTPRequestHandler):
             return True
         try:
             from urllib.parse import urlsplit
-            host = (urlsplit(origin).hostname or "").lower()
+            origin_host = (urlsplit(origin).hostname or "").lower()
         except Exception:
             return False
-        return host in ("127.0.0.1", "localhost", "::1")
+        if origin_host in ("127.0.0.1", "localhost", "::1"):
+            return True
+        if WEB_DEPLOY_MODE:
+            request_host = (self.headers.get("Host") or "").split(":", 1)[0].lower()
+            return bool(request_host and origin_host == request_host)
+        return False
 
     def do_GET(self):
         global CURRENT_EDITOR, CURRENT_FILE_PATH, LAST_REQUEST_TS
@@ -490,6 +496,14 @@ class P5RWebHandler(SimpleHTTPRequestHandler):
             self.wfile.write(body)
             return
         elif parsed.path == "/api/discovery":
+            if WEB_DEPLOY_MODE:
+                self.send_json(200, {
+                    "discovered_dirs": [],
+                    "saves": [],
+                    "web_upload_only": True,
+                    "message": "Hosted web builds cannot scan local Steam folders. Use BROWSE to upload a save file."
+                })
+                return
             dirs = discover_steam_save_dirs()
             saves = []
             for d in dirs:
@@ -500,6 +514,9 @@ class P5RWebHandler(SimpleHTTPRequestHandler):
             self.send_json(200, {"discovered_dirs": [str(d) for d in dirs], "saves": saves})
             return
         elif parsed.path == "/api/backups":
+            if WEB_DEPLOY_MODE:
+                self.send_json(200, {"backups": [], "web_upload_only": True})
+                return
             if not CURRENT_FILE_PATH or not os.path.exists(CURRENT_FILE_PATH):
                 self.send_json(200, {"backups": []})
                 return
@@ -526,6 +543,9 @@ class P5RWebHandler(SimpleHTTPRequestHandler):
                 pass
 
         if parsed.path == "/api/load":
+            if WEB_DEPLOY_MODE:
+                self.send_json(400, {"error": "Hosted web builds cannot read local file paths. Use BROWSE to upload a save file."})
+                return
             path_str = data.get("path", "").strip()
             if not path_str:
                 self.send_json(400, {"error": "Save file path is required."})
@@ -555,24 +575,35 @@ class P5RWebHandler(SimpleHTTPRequestHandler):
                 raw_bytes = base64.b64decode(raw_b64)
                 CURRENT_EDITOR = SaveEditor(raw_bytes)
                 CURRENT_FILE_PATH = f"Uploaded ({filename})"
-                instances.update_save(CURRENT_FILE_PATH)
+                if not WEB_DEPLOY_MODE:
+                    instances.update_save(CURRENT_FILE_PATH)
                 resp = _build_loaded_save_payload(CURRENT_EDITOR, CURRENT_FILE_PATH)
+                resp["web_upload_only"] = WEB_DEPLOY_MODE
                 self.send_json(200, resp)
             except Exception as e:
                 self.send_json(500, {"error": f"Failed to load uploaded save: {str(e)}"})
 
         elif parsed.path == "/api/save":
+            source_b64 = data.get("source_data")
+            if source_b64:
+                try:
+                    CURRENT_EDITOR = SaveEditor(base64.b64decode(source_b64))
+                    CURRENT_FILE_PATH = f"Uploaded ({data.get('filename') or 'DATA.DAT'})"
+                except Exception as e:
+                    self.send_json(400, {"error": f"Invalid source save data: {str(e)}"})
+                    return
             if not CURRENT_EDITOR or not CURRENT_FILE_PATH:
                 self.send_json(400, {"error": "No save file loaded."})
                 return
 
-            p5r_run, _ = check_running_processes()
-            if p5r_run:
-                self.send_json(409, {"error": "P5R.exe is currently running! Please close the game before saving."})
-                return
+            if not WEB_DEPLOY_MODE:
+                p5r_run, _ = check_running_processes()
+                if p5r_run:
+                    self.send_json(409, {"error": "P5R.exe is currently running! Please close the game before saving."})
+                    return
 
             try:
-                is_uploaded = CURRENT_FILE_PATH.startswith("Uploaded (")
+                is_uploaded = WEB_DEPLOY_MODE or CURRENT_FILE_PATH.startswith("Uploaded (")
                 p = None
                 backup_path_name = "N/A (Uploaded save)"
                 if not is_uploaded:
@@ -771,16 +802,20 @@ class P5RWebHandler(SimpleHTTPRequestHandler):
                     "download_data": base64.b64encode(out_bytes).decode("ascii") if is_uploaded else None,
                     "message": "Save file successfully re-signed and saved!"
                 }
-                _conflicts = instances.find_conflicts(CURRENT_FILE_PATH)
-                if _conflicts:
-                    resp["notice"] = (
-                        "This save is also open in another window — last save wins."
-                    )
+                if not WEB_DEPLOY_MODE:
+                    _conflicts = instances.find_conflicts(CURRENT_FILE_PATH)
+                    if _conflicts:
+                        resp["notice"] = (
+                            "This save is also open in another window — last save wins."
+                        )
                 self.send_json(200, resp)
             except Exception as e:
                 self.send_json(500, {"error": f"Failed to save file: {str(e)}"})
 
         elif parsed.path == "/api/restore":
+            if WEB_DEPLOY_MODE:
+                self.send_json(400, {"error": "Hosted web builds do not keep server-side backups. Use your browser-downloaded file as the edited copy."})
+                return
             backup_name = data.get("backup_name", "")
             if not CURRENT_FILE_PATH or not backup_name:
                 self.send_json(400, {"error": "Missing backup file or save path."})

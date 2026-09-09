@@ -1,7 +1,7 @@
 # MEMORY.md — P5R Save Editor (Change of Heart)
 
 > Canonical memory. Read this before any work. Update at end of every session.
-> Updated: 2026-08-24
+> Updated: 2026-09-09
 
 ## Project Identity
 - **Title:** Change of Heart — P5R Save Editor
@@ -76,6 +76,7 @@
 - Uses Hermes in parallel for research/oracle
 - When DSH broken, prefers fix not workaround
 - Push to GitHub only after in-game verification
+- Hosted web deploy is acceptable for upload/download saves, but desktop mode remains preferred for privacy-sensitive users.
 
 ## Known Pitfalls
 - PC save ≠ PS4 save — never trust PS4 offsets from KHSaveEditor
@@ -106,3 +107,4 @@
 - 2026-08-24 (later): UI-liveness watchdog shipped after r/Persona5Royale field report (u/Gruphius: all versions silently dead on his machine = broken WebView2 runtime) — heartbeat + auto browser fallback; 170 tests; EXE rebuilt (520a1c5a)
 - 2026-08-24 (evening): UI Atlus-fidelity pass R1+R1.9 — screenshot audit vs official game screenshots (gameuidatabase.com, pixel-sampled): rainbow gradient → flat white bar, green/yellow slabs → authentic red/white/black/cyan palette (D016-adjacent), hex IDs removed from persona cards, star ladder → horizontal meters, sidebar emoji → flat SVGs, type hierarchy demoted; v1.1.1 released with watchdog build
 - 2026-08-24 (night): Bond-points wipe bug FIXED (zamasu2020) — social-stat edits reset all confidants' surplus via full-confidant re-save loop; preserve-surplus semantics in set_confidant_rank + set_social_stats (D016); 4 regression tests (174/174); EXE rebuilt
+- 2026-09-09: Vercel hosted web mode added — `api/index.py` + `vercel.json`, same-host Origin allowance in deploy mode, upload-only load/save path with stateless `source_data`, no server-side backups/restores; targeted hardening + heartbeat tests passed.

@@ -5,22 +5,22 @@
   "gate": "ready",
   "mode": "single-agent",
   "pinned_shas": {},
-  "last_session": "memory/2026-08-24-audit-fixes.md",
-  "updated_at": "2026-08-24T23:30:00Z",
-  "version": "v1.1.1",
+  "last_session": "memory/2026-09-09-vercel-web-mode.md",
+  "updated_at": "2026-09-09T00:00:00Z",
+  "version": "v1.1.1-web",
   "test_command": [
     "python",
     "-m",
     "unittest",
-    "discover",
-    "-s",
-    "tests"
+    "tests.test_hardening",
+    "tests.test_ui_heartbeat",
+    "-v"
   ],
-  "test_count": 174,
+  "test_count": 51,
   "blockers": [],
-  "next_action": "v1.1.1 released with UI-liveness watchdog, multi-location save discovery, and CSRF origin guard",
+  "next_action": "Deploy hosted upload/download web mode to Vercel",
   "active_owners": [],
   "frozen_offsets": [
-    "0xA000+ Outfits save wiring (D008 \u2014 read-only in UI)"
+    "0xA000+ Outfits save wiring (D008 — read-only in UI)"
   ]
 }

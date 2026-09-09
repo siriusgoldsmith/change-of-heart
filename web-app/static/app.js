@@ -14,6 +14,9 @@ let DB = {
 };
 
 let CURRENT_SAVE = null;
+let CURRENT_FILE_PATH = "";
+let CURRENT_SOURCE_B64 = "";
+let CURRENT_SOURCE_FILENAME = "DATA.DAT";
 let ACTIVE_MEMBER_INDEX = 0;
 let CURRENT_CONFIDANT_FILTER = "all";
 let ALLOW_UNSAFE_CONFIDANTS = false;
@@ -303,7 +306,10 @@ async function refreshDiscovery() {
     const dropdown = document.getElementById("saveFileDropdown");
     dropdown.innerHTML = "";
 
-    if (data.saves && data.saves.length > 0) {
+    if (data.web_upload_only) {
+      dropdown.innerHTML = `<option value="">-- Hosted web mode: use BROWSE to upload --</option>`;
+      setStatus(data.message || "Hosted web mode — click 📂 BROWSE to upload a P5R save. Files are processed per request and downloaded back to you.");
+    } else if (data.saves && data.saves.length > 0) {
       data.saves.forEach((s) => {
         const opt = document.createElement("option");
         opt.value = s;
@@ -317,6 +323,9 @@ async function refreshDiscovery() {
     }
   } catch (err) {
     console.error("Discovery error:", err);
+    const dropdown = document.getElementById("saveFileDropdown");
+    if (dropdown) dropdown.innerHTML = `<option value="">-- Hosted web mode: use BROWSE to upload --</option>`;
+    setStatus("Hosted web mode — click 📂 BROWSE to upload a P5R save. Files are processed per request and downloaded back to you.");
   }
 }
 
@@ -338,6 +347,8 @@ async function loadSaveFile() {
       setStatus("Failed to load: " + data.error);
       return;
     }
+    CURRENT_SOURCE_B64 = "";
+    CURRENT_SOURCE_FILENAME = path.split("\\").pop() || "DATA.DAT";
     _applyLoadedSaveData(data, path);
   } catch (err) {
     console.error("Load save error:", err);
@@ -355,6 +366,8 @@ function onManualFileSelected(event) {
   reader.onload = async (e) => {
     try {
       const b64 = e.target.result.split(",")[1];
+      CURRENT_SOURCE_B64 = b64;
+      CURRENT_SOURCE_FILENAME = file.name || "DATA.DAT";
       setStatus("Decrypting uploaded save file...");
       const res = await fetch("/api/load-upload", {
         method: "POST",
@@ -3281,7 +3294,12 @@ async function executeSavePayload(skipReview) {
     CURRENT_SAVE.unlock_compendium = true;
   }
 
-  setStatus("Creating timestamped backup & re-signing save...");
+  if (CURRENT_SOURCE_B64) {
+    CURRENT_SAVE.source_data = CURRENT_SOURCE_B64;
+    CURRENT_SAVE.filename = CURRENT_SOURCE_FILENAME || CURRENT_FILE_PATH.replace(/^Uploaded \((.*)\)$/, "$1") || "DATA.DAT";
+  }
+
+  setStatus(CURRENT_SOURCE_B64 ? "Re-signing uploaded save for download..." : "Creating timestamped backup & re-signing save...");
   try {
     const res = await fetch("/api/save", {
       method: "POST",
@@ -3304,11 +3322,12 @@ async function executeSavePayload(skipReview) {
     // mirror/conflict will refresh on next load
     if (result.notice) renderSameSaveNotice(result.notice);
     if (result.download_data) {
+      CURRENT_SOURCE_B64 = result.download_data;
       // Trigger instant browser download for uploaded files
       const blob = new Blob([Uint8Array.from(atob(result.download_data), c => c.charCodeAt(0))], { type: "application/octet-stream" });
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
-      a.download = CURRENT_FILE_PATH.replace(/^Uploaded \((.*)\)$/, "$1") || "DATA.DAT";
+      a.download = CURRENT_SOURCE_FILENAME || CURRENT_FILE_PATH.replace(/^Uploaded \((.*)\)$/, "$1") || "DATA.DAT";
       document.body.appendChild(a);
       a.click();
       a.remove();

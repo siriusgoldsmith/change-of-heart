@@ -195,6 +195,22 @@ python main.py
 python -m unittest discover -s tests -v
 ```
 
+## 🌐 Hosted Web Build (Vercel)
+
+This fork can also run as an upload/download web app on Vercel:
+
+- Vercel cannot scan your PC's Steam folders, so use **📂 BROWSE...** to upload `DATA.DAT` / `DATA.BIN`.
+- Hosted mode processes the uploaded save per request and returns a re-signed download; it does **not** write to disk or keep server-side backups.
+- For privacy-sensitive use, prefer local desktop mode; the hosted build necessarily sends the save file to the deployment's serverless function for AES/CRC processing.
+
+Deploy from the fork with:
+
+```bash
+npm i -g vercel
+vercel
+vercel --prod
+```
+
 ### 🩺 Troubleshooting: app window opens but nothing works
 If the editor launches but buttons are dead / saves aren't detected, your **Microsoft Edge WebView2 Runtime** is likely broken (it auto-updates independently of the app and can silently fail after an update):
 1. The app now detects this automatically — after ~30 seconds it reopens itself in your default web browser.
