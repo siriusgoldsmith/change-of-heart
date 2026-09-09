@@ -18,7 +18,7 @@
   ],
   "test_count": 51,
   "blockers": [],
-  "next_action": "Deploy hosted upload/download web mode to Vercel",
+  "next_action": "Claim/link a Vercel account for permanent production hosting; anonymous temporary deploy verified.",
   "active_owners": [],
   "frozen_offsets": [
     "0xA000+ Outfits save wiring (D008 — read-only in UI)"

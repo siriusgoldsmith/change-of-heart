@@ -15,7 +15,7 @@
 - 2026-08-24 (later): UI-liveness watchdog shipped — frontend pings /api/ui-heartbeat; if the native WebView2 window never checks in within 30s (broken runtime = Gruphius's silent-dead-buttons symptom), main.py auto-opens the editor in the system browser and keeps serving. /api/heartbeat-status diagnostics endpoint added. 170/170 tests. EXE rebuilt + live-window smoke test PASSED (heartbeat ever_seen=true).
 
 ## Next Action
-- Deploy hosted upload/download web mode to Vercel.
+- Claim/link a Vercel account for permanent production hosting; anonymous temporary deploy verified.
 
 ## Blockers
 - None.
