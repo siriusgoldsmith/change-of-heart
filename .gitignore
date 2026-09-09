@@ -87,3 +87,4 @@ patch_notes_*.md
 design/reference/*.jpg
 design/reference/urls.txt
 design/reference/gud_index.md
+.vercel
