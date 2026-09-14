@@ -1,7 +1,6 @@
 /**
  * Persona 5 Royal Save Editor — Official Atlus-Grade Client Controller
  */
-
 let DB = {
   personas: [],
   skills: [],
@@ -12,7 +11,6 @@ let DB = {
   romanceable: [],
   point_thresholds: {}
 };
-
 let CURRENT_SAVE = null;
 let CURRENT_FILE_PATH = "";
 let CURRENT_SOURCE_B64 = "";
@@ -21,7 +19,6 @@ let ACTIVE_MEMBER_INDEX = 0;
 let CURRENT_CONFIDANT_FILTER = "all";
 let ALLOW_UNSAFE_CONFIDANTS = false;
 let INITIAL_CONFIDANT_RANKS = {};
-
 // =========================================================================
 // AUTHENTIC PERSONA 5 SYNTHETIC WEB AUDIO SFX ENGINE
 // =========================================================================
@@ -87,15 +84,12 @@ const P5Audio = {
     } catch(e) {}
   }
 };
-
 // Global click sound listener for buttons and interactive pills
 document.addEventListener("click", (e) => {
   if (e.target.closest("button, .p5-btn-action, .p5-nav-item, .p5-tarot-card, .filter-pill, .stock-chip, .star-node")) {
     P5Audio.playClick();
   }
 });
-
-
 // Meta God Build Presets (Real P5R Persona & Skill IDs — verified against
 // data/ tables 2026-08-16; the previous IDs were from a foreign numbering
 // and produced junk personas / crashes in-game)
@@ -146,7 +140,6 @@ const GOD_BUILDS = {
     ]
   }
 };
-
 // Persona 5 Royal Canonical Elemental Affinities Database (By Canonical Name and Hex/Dec IDs)
 // '-' (Neutral), 'Wk' (Weak), 'Str' (Resist), 'Nul' (Null), 'Rpl' (Repel), 'Dr' (Drain)
 const P5R_BASE_AFFINITIES = {
@@ -179,7 +172,6 @@ const P5R_BASE_AFFINITIES = {
   "Odin": { phys: "-", gun: "-", fire: "-", ice: "-", elec: "Dr", wind: "Rpl", psy: "-", nuke: "-", bless: "-", curse: "Wk" },
   "Anubis": { phys: "-", gun: "-", fire: "-", ice: "-", elec: "-", wind: "-", psy: "-", nuke: "-", bless: "Nul", curse: "Nul" },
   "King Frost": { phys: "-", gun: "-", fire: "Wk", ice: "Dr", elec: "-", wind: "-", psy: "-", nuke: "-", bless: "Nul", curse: "-" },
-
   // ID Aliases
   1: { phys: "-", gun: "-", fire: "-", ice: "Wk", elec: "-", wind: "-", psy: "-", nuke: "-", bless: "Wk", curse: "Str" },
   201: { phys: "-", gun: "-", fire: "-", ice: "Wk", elec: "-", wind: "-", psy: "-", nuke: "-", bless: "Wk", curse: "Str" },
@@ -212,7 +204,6 @@ const P5R_BASE_AFFINITIES = {
   209: { phys: "-", gun: "-", fire: "-", ice: "-", elec: "-", wind: "-", psy: "-", nuke: "-", bless: "Str", curse: "Wk" },
   240: { phys: "Str", gun: "-", fire: "-", ice: "-", elec: "-", wind: "-", psy: "-", nuke: "-", bless: "Nul", curse: "Wk" }
 };
-
 // Skill Passive Overrides (Resist, Null, Repel, Drain)
 const PASSIVE_AFFINITY_SKILLS = {
   // Fire
@@ -254,7 +245,6 @@ const PASSIVE_AFFINITY_SKILLS = {
   904: { elem: "phys", type: "Rpl" }, // Repel Phys
   905: { elem: "phys", type: "Dr"  }  // Drain Phys
 };
-
 // Lifecycle
 document.addEventListener("DOMContentLoaded", async () => {
   startUiHeartbeat(); // FIRST — prove the WebView UI is alive (main.py watchdog).
@@ -264,7 +254,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   refreshDiscovery();
   initInventoryKeyboard(); // R5: keyboard navigation for the item roster
 });
-
 // UI liveness ping — if these never arrive at the server, the native window's
 // JS is dead (broken WebView2 Runtime) and main.py auto-falls-back to the
 // system browser instead of leaving the user with a silent dead window.
@@ -273,7 +262,6 @@ function startUiHeartbeat() {
   beat();
   setInterval(beat, 15000);
 }
-
 // Load Database
 async function loadDatabase() {
   try {
@@ -1503,96 +1491,24 @@ function renderConfidantAffinityMeter(arcana, info) {
   const state = getConfidantAffinityState(arcana, info);
   const { rank, points, nextRank, nextThreshold, hasPointGate, eventReady, missing, pct } = state;
   const inputId = `affinityPointsInput_${arcana.replace(/\W/g, "_")}`;
-  const inputHtml = `
-    <label class="affinity-edit-box" for="${inputId}">
-      <span>CURRENT</span>
-      <input
-        id="${inputId}"
-        class="affinity-points-input"
-        type="number"
-        min="0"
-        max="65535"
-        step="1"
-        value="${points}"
-        onchange="setConfidantAffinityPoints('${arcana}', this.value)"
-        onkeydown="if(event.key === 'Enter') this.blur();"
-      >
-      <span>PTS</span>
-    </label>
-  `;
-
-  if (rank >= 10) {
-    return `
-      <div class="affinity-meter-card maxed">
-        <div class="affinity-meter-head">
-          <span>AFFINITY POINTS</span>
-          <span class="affinity-state-badge maxed">BOND MAXED</span>
-        </div>
-        <div class="affinity-meter-main">
-          ${inputHtml}
-          <div class="affinity-copy">Rank 10 has no next event gate, but the stored point value can still be edited if you want exact save parity.</div>
-        </div>
-        <div class="affinity-quick-actions">
-          <button class="affinity-mini-btn" onclick="stepConfidantAffinityPoints('${arcana}', -1)">-1</button>
-          <button class="affinity-mini-btn" onclick="stepConfidantAffinityPoints('${arcana}', 1)">+1</button>
-          <button class="affinity-mini-btn white" onclick="setConfidantAffinityPoints('${arcana}', 99)">SET 99</button>
-        </div>
-      </div>
-    `;
-  }
-
-  if (!hasPointGate) {
-    return `
-      <div class="affinity-meter-card story-locked">
-        <div class="affinity-meter-head">
-          <span>AFFINITY POINTS</span>
-          <span class="affinity-state-badge story">STORY / SPECIAL</span>
-        </div>
-        <div class="affinity-meter-main">
-          ${inputHtml}
-          <div class="affinity-copy">No reliable point gate is defined for this Arcana/rank. You can still write the stored points manually.</div>
-        </div>
-        <div class="affinity-quick-actions">
-          <button class="affinity-mini-btn" onclick="stepConfidantAffinityPoints('${arcana}', -1)">-1</button>
-          <button class="affinity-mini-btn" onclick="stepConfidantAffinityPoints('${arcana}', 1)">+1</button>
-          <button class="affinity-mini-btn white" onclick="setConfidantAffinityPoints('${arcana}', 99)">SET 99</button>
-        </div>
-      </div>
-    `;
-  }
-
+  const inputHtml = `<label class="affinity-edit-box" for="${inputId}"><span>CURRENT</span><input id="${inputId}" class="affinity-points-input" type="number" min="0" max="65535" step="1" value="${points}" onchange="setConfidantAffinityPoints('${arcana}', this.value)" onkeydown="if(event.key === 'Enter') this.blur();"><span>PTS</span></label>`;
+  const quickSmall = `<div class="affinity-quick-actions"><button class="affinity-mini-btn" onclick="stepConfidantAffinityPoints('${arcana}', -1)">-1</button><button class="affinity-mini-btn" onclick="stepConfidantAffinityPoints('${arcana}', 1)">+1</button><button class="affinity-mini-btn white" onclick="setConfidantAffinityPoints('${arcana}', 99)">SET 99</button></div>`;
+  if (rank >= 10) return `
+    <div class="affinity-meter-card maxed"><div class="affinity-meter-head"><span>AFFINITY POINTS</span><span class="affinity-state-badge maxed">BOND MAXED</span></div>
+      <div class="affinity-meter-main">${inputHtml}<div class="affinity-copy">Rank 10 has no next event gate, but the stored point value can still be edited if you want exact save parity.</div></div>${quickSmall}</div>`;
+  if (!hasPointGate) return `
+    <div class="affinity-meter-card story-locked"><div class="affinity-meter-head"><span>AFFINITY POINTS</span><span class="affinity-state-badge story">STORY / SPECIAL</span></div>
+      <div class="affinity-meter-main">${inputHtml}<div class="affinity-copy">No reliable point gate is defined for this Arcana/rank. You can still write the stored points manually.</div></div>${quickSmall}</div>`;
+  const badge = eventReady ? 'EVENT READY' : `${missing} PTS TO EVENT`;
+  const copy = eventReady ? `Next hangout should trigger the Rank ${nextRank} event. Saving after rank-click staging writes these points.` : `Needs ${nextThreshold} affinity points for the Rank ${nextRank} event trigger.`;
+  const actionButtons = [[-10, '-10'], [-1, '-1'], [1, '+1'], [10, '+10']]
+    .map(([delta, label]) => `<button class="affinity-mini-btn" onclick="stepConfidantAffinityPoints('${arcana}', ${delta})">${label}</button>`).join('');
   return `
-    <div class="affinity-meter-card ${eventReady ? 'ready' : 'building'}">
-      <div class="affinity-meter-head">
-        <span>AFFINITY POINTS</span>
-        <span class="affinity-state-badge ${eventReady ? 'ready' : 'building'}">${eventReady ? 'EVENT READY' : `${missing} PTS TO EVENT`}</span>
-      </div>
-      <div class="affinity-meter-main">
-        ${inputHtml}
-        <div class="affinity-copy">
-          ${eventReady
-            ? `Next hangout should trigger the Rank ${nextRank} event. Saving after rank-click staging writes these points.`
-            : `Needs ${nextThreshold} affinity points for the Rank ${nextRank} event trigger.`}
-        </div>
-      </div>
-      <div class="affinity-track" title="${points} / ${nextThreshold} points toward Rank ${nextRank}">
-        <div class="affinity-fill" style="width:${pct}%;"></div>
-        <div class="affinity-threshold-mark"></div>
-      </div>
-      <div class="affinity-meter-foot">
-        <span><strong>${points}</strong> / ${nextThreshold} pts</span>
-        <span>Current Rank ${rank} → Event Rank ${nextRank}</span>
-      </div>
-      <div class="affinity-quick-actions">
-        <button class="affinity-mini-btn" onclick="stepConfidantAffinityPoints('${arcana}', -10)">-10</button>
-        <button class="affinity-mini-btn" onclick="stepConfidantAffinityPoints('${arcana}', -1)">-1</button>
-        <button class="affinity-mini-btn" onclick="stepConfidantAffinityPoints('${arcana}', 1)">+1</button>
-        <button class="affinity-mini-btn" onclick="stepConfidantAffinityPoints('${arcana}', 10)">+10</button>
-        <button class="affinity-mini-btn ready" onclick="setConfidantAffinityPoints('${arcana}', ${nextThreshold})">EVENT READY</button>
-        <button class="affinity-mini-btn white" onclick="setConfidantAffinityPoints('${arcana}', 99)">SET 99</button>
-      </div>
-    </div>
-  `;
+    <div class="affinity-meter-card ${eventReady ? 'ready' : 'building'}"><div class="affinity-meter-head"><span>AFFINITY POINTS</span><span class="affinity-state-badge ${eventReady ? 'ready' : 'building'}">${badge}</span></div>
+      <div class="affinity-meter-main">${inputHtml}<div class="affinity-copy">${copy}</div></div>
+      <div class="affinity-track" title="${points} / ${nextThreshold} points toward Rank ${nextRank}"><div class="affinity-fill" style="width:${pct}%;"></div><div class="affinity-threshold-mark"></div></div>
+      <div class="affinity-meter-foot"><span><strong>${points}</strong> / ${nextThreshold} pts</span><span>Current Rank ${rank} → Event Rank ${nextRank}</span></div>
+      <div class="affinity-quick-actions">${actionButtons}<button class="affinity-mini-btn ready" onclick="setConfidantAffinityPoints('${arcana}', ${nextThreshold})">EVENT READY</button><button class="affinity-mini-btn white" onclick="setConfidantAffinityPoints('${arcana}', 99)">SET 99</button></div></div>`;
 }
 
 function setConfidantAffinityPoints(arcana, value) {
@@ -1610,7 +1526,6 @@ function stepConfidantAffinityPoints(arcana, delta) {
   const cur = parseInt(CURRENT_SAVE?.confidants?.[arcana]?.points || 0, 10);
   setConfidantAffinityPoints(arcana, cur + delta);
 }
-
 function renderActiveConfidantSpotlight(arcana) {
   const spotlight = document.getElementById("confidantHeroSpotlight");
   if (!spotlight || !CURRENT_SAVE?.confidants?.[arcana]) return;
